@@ -15,7 +15,7 @@ public class AuthServiceImpl implements AuthService {
     public UserDto registerUser(UserDto userDto) {
          UserDto user = userService.createUser(userDto);
 
-         return null;
+         return user;
      }
 
 }
