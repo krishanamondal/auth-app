@@ -16,26 +16,21 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 public class SecurityConfig {
+
     @Bean
-   public PasswordEncoder passwordEncoder(){
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http){
-
         http.authorizeHttpRequests(authorizeHttpRequest ->
-                authorizeHttpRequest.requestMatchers("/api/v1/auth/**").permitAll()
-                        .anyRequest().authenticated())
-                .csrf(AbstractHttpConfigurer::disable)
-                .httpBasic(Customizer.withDefaults());
-
+        authorizeHttpRequest.requestMatchers("/api/v1/auth/**").permitAll()
+        .anyRequest().authenticated())
+        .csrf(AbstractHttpConfigurer::disable)
+        .httpBasic(Customizer.withDefaults());
         return http.build();
     }
-
-
-
-
 
 
 //    @Bean
