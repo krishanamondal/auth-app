@@ -11,7 +11,6 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.Callable;
 
 @Service
 public class JwtService {
@@ -73,8 +72,8 @@ public class JwtService {
                 .compact();
     }
 
-//    parse the token
-    public Jws<Claims>parse(String token){
+    //    parse the token
+    public Jws<Claims> parse(String token){
         try {
             return Jwts.parser()
                     .verifyWith(key)
