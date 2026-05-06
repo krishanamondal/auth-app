@@ -1,8 +1,7 @@
 package com.substring.auth.security;
 
 import com.substring.auth.repository.UserRepository;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.*;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,24 +34,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
-            @NonNull HttpServletResponse response,
-            @NonNull FilterChain filterChain
+            HttpServletResponse response,
+            FilterChain filterChain
     ) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-
+      logger.info("Authorization Header : {}",authHeader);
         // 1. Check if the Authorization header is present and starts with "Bearer "
         if (authHeader != null && !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
         }
 
         String jwt = authHeader.substring(7);
-        if (!jwtService.isAccessToken(jwt)){
-            filterChain.doFilter(request,response);
-            return;
-        }
+
 
         try {
+            if (!jwtService.isAccessToken(jwt)){
+                filterChain.doFilter(request,response);
+                return;
+            }
             Jws<Claims> parse = jwtService.parse(jwt);
             Claims payload = parse.getPayload();
 
@@ -61,18 +61,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UUID userUUid = UUID.fromString(userId);
             userRepository.findById(userUUid)
                     .ifPresent(user -> {
-                        List<GrantedAuthority> authorities = user.getRoles() == null ? List.of() : user.getRoles().stream().map(role -> new SimpleGrantedAuthority(role.getName())).collect(Collectors.toList());
-                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                                user.getEmail(),
-                                null,
-                                authorities
-                        );
-                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+if (user.isEnable()){
+    List<GrantedAuthority> authorities = user.getRoles() == null ? List.of() : user.getRoles().stream().map(role -> new SimpleGrantedAuthority(role.getName())).collect(Collectors.toList());
+    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+            user.getEmail(),
+            null,
+            authorities
+    );
+    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+    if (SecurityContextHolder.getContext().getAuthentication() == null){
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+}
+
+
                     });
 
 
-        } catch (Exception e) {
+        } catch (ExpiredJwtException exception){
+            exception.printStackTrace();
+        }catch (MalformedJwtException exception){
+            exception.printStackTrace();
+        }catch (JwtException exception){
+            exception.printStackTrace();
+        }catch (Exception e) {
             // If token is invalid or expired, we don't set the context
             // Spring Security will eventually throw a 403 or 401 based on your config
             System.out.println("JWT Authentication failed: " + e.getMessage());
