@@ -39,7 +39,7 @@ public class JwtService {
         Instant instant = Instant.now();
         List<String> roles = user.getRoles().stream().map(Role::getName).toList();
         return Jwts.builder()
-                . id(UUID.randomUUID().toString())
+                .id(UUID.randomUUID().toString())
                 .subject(user.getId().toString())
                 .issuer(issuer)
                 .issuedAt(Date.from(instant))
@@ -49,7 +49,7 @@ public class JwtService {
                         "roles", roles,
                         "typ", "access"
                 ))
-                .signWith(key, SignatureAlgorithm.ES512)
+                .signWith(key)
                 .compact();
     }
 
@@ -58,7 +58,7 @@ public class JwtService {
         Instant instant = Instant.now();
         List<String> roles = user.getRoles().stream().map(Role::getName).toList();
         return Jwts.builder()
-                . id(jti)
+                .id(jti)
                 .subject(user.getId().toString())
                 .issuer(issuer)
                 .issuedAt(Date.from(instant))
@@ -68,7 +68,7 @@ public class JwtService {
                         "roles", roles,
                         "typ", "refresh"
                 ))
-                .signWith(key, SignatureAlgorithm.ES512)
+                .signWith(key)
                 .compact();
     }
 
@@ -100,5 +100,13 @@ public class JwtService {
     public String getJti(String token){
         return parse(token).getPayload().getId();
     }
+   public List<String> getRole (String token){
+        Claims claims = parse(token).getPayload();
+        return (List<String>) claims.get("roles");
+   }
 
+   public String getEmail (String token){
+        Claims claims = parse(token).getPayload();
+        return (String) claims.get("email");
+   }
 }

@@ -9,20 +9,19 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
 @Configuration
 public class SecurityConfig {
 
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
@@ -42,16 +41,16 @@ public class SecurityConfig {
         authorizeHttpRequest.requestMatchers("/api/v1/auth/**").permitAll()
         .anyRequest().authenticated())
         .csrf(AbstractHttpConfigurer::disable)
-        .exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint((request, response, authException)->{
+        .exceptionHandling(exceptionHandling -> exceptionHandling.authenticationEntryPoint((req, response, authException)->{
 
-            authException.printStackTrace();
+            logger.warn("Unauthorized access attempt: {}", authException.getMessage());
             response.setStatus(401);
             response.setContentType("application/json");
             String message = "unauthorize access " + authException.getMessage();
             Map<String, String> errorMap = Map.of(
                     "message", message,
                     "status", String.valueOf(401),
-                    "statusCode", "UNAUTHORIZED"
+                    "statusCode", "UNAUTHORIZED Please provide valid credentials"
             );
             var objectMapper = new ObjectMapper();
             response.getWriter().write(objectMapper.writeValueAsString(errorMap));
