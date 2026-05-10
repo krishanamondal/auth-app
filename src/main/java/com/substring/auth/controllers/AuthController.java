@@ -20,8 +20,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.security.Principal;
-
 @RestController
 @RequestMapping("/api/v1/auth")
 @AllArgsConstructor
@@ -41,7 +39,8 @@ public class AuthController {
             throw  new DisabledException("User account is disabled");
         }
         String accessToken = jwtService.generateAccessToken(user);
-        AuthResponseDto.of(accessToken,"",jwtService.getAccessTokenExpiration(), modelMapper.map(user, UserDto.class));
+        AuthResponseDto authResponse = AuthResponseDto.of(accessToken, "", jwtService.getAccessTokenExpirationTime(), modelMapper.map(user, UserDto.class));
+        return ResponseEntity.ok(authResponse);
     }
     private Authentication authenticate(LoginRequestDto dto){
         try {
