@@ -93,7 +93,7 @@ public class SecurityConfig {
 //                                            "error",
 //                                            "UNAUTHORIZED"
 //                                    );
-var errorMap = ApiError.of(401, "Authorization Access ! ",message,req.getRequestURI());
+var errorMap = ApiError.of(401, "Authorization Access ! ",message,req.getRequestURI(),true);
                                     ObjectMapper objectMapper =
                                             new ObjectMapper();
 
