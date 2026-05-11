@@ -1,12 +1,14 @@
 package com.substring.auth.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.substring.auth.dtos.ApiError;
 import com.substring.auth.security.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -71,21 +73,27 @@ public class SecurityConfig {
                                     logger.warn(
                                             "Unauthorized access: {}",
                                             authException.getMessage());
-
+                                    String message;
+ Object error = req.getAttribute("error");
+ if (error != null) {
+        message = error.toString();
+    } else {
+        message = "Unauthorized access";
+ }
                                     response.setStatus(
                                             HttpServletResponse.SC_UNAUTHORIZED);
 
                                     response.setContentType("application/json");
 
-                                    Map<String, String> errorMap = Map.of(
-                                            "message",
-                                            "Unauthorized access",
-                                            "status",
-                                            "401",
-                                            "error",
-                                            "UNAUTHORIZED"
-                                    );
-
+//                                    Map<String, String> errorMap = Map.of(
+//                                            "message",
+//                                            message,
+//                                            "status",
+//                                            "401",
+//                                            "error",
+//                                            "UNAUTHORIZED"
+//                                    );
+var errorMap = ApiError.of(401, "Authorization Access ! ",message,req.getRequestURI());
                                     ObjectMapper objectMapper =
                                             new ObjectMapper();
 

@@ -32,27 +32,20 @@ public class AuthController {
     private final ModelMapper modelMapper;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDto> loginUser(@RequestBody LoginRequestDto loginDto){
+    public ResponseEntity<AuthResponseDto> loginUser(@RequestBody LoginRequestDto loginDto) {
         Authentication authenticated = authenticate(loginDto);
         User user = userRepository.findByEmail(loginDto.email()).orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
-        if (!user.isEnable()){
-            throw  new DisabledException("User account is disabled");
+        if (!user.isEnable()) {
+            throw new DisabledException("User account is disabled");
         }
         String accessToken = jwtService.generateAccessToken(user);
         AuthResponseDto authResponse = AuthResponseDto.of(accessToken, "", jwtService.getAccessTokenExpirationTime(), modelMapper.map(user, UserDto.class));
         return ResponseEntity.ok(authResponse);
     }
-    private Authentication authenticate(LoginRequestDto dto){
-        try {
-          return   authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(dto.email(), dto.password())
-            );
-        }catch (Exception exception){
-    throw new BadCredentialsException("Invalid email or password");
-        }
-    }
 
-    {
+    private Authentication authenticate(LoginRequestDto dto) {
+        return authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(dto.email(), dto.password()));
     }
 
     @PostMapping("/register")
