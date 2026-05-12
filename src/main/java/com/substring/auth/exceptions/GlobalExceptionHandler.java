@@ -15,6 +15,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.Instant;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler({
@@ -25,7 +27,7 @@ public class GlobalExceptionHandler {
 
     })
     public ResponseEntity<ApiError> handleAuthException(Exception exception , HttpServletRequest request){
- var apiError =  ApiError.of(HttpStatus.BAD_REQUEST.value(),"Bad Request",exception.getMessage(),request.getRequestURI());
+ var apiError =  ApiError.of(HttpStatus.BAD_REQUEST.value(),"Bad Request",exception.getMessage(),request.getRequestURI(), "");
         return ResponseEntity.badRequest().body(apiError);
     }
 

@@ -2,7 +2,9 @@ package com.substring.auth.controllers;
 
 import com.substring.auth.dtos.AuthResponseDto;
 import com.substring.auth.dtos.UserDto;
+import com.substring.auth.entities.RefreshToken;
 import com.substring.auth.entities.User;
+import com.substring.auth.repository.RefreshTokenRepository;
 import com.substring.auth.repository.UserRepository;
 import com.substring.auth.security.JwtService;
 import com.substring.auth.services.AuthService;
@@ -20,12 +22,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 @AllArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final JwtService jwtService;
@@ -38,8 +44,19 @@ public class AuthController {
         if (!user.isEnable()) {
             throw new DisabledException("User account is disabled");
         }
+        String jti = UUID.randomUUID().toString();
+         var refreshTokenObject = RefreshToken.builder()
+                 .jti(jti)
+                 .user(user)
+                 .createdAt(Instant.now())
+                 .expiresAt(Instant.now().plusSeconds(jwtService.getRefreshTokenExpirationTime()))
+                 .revoked(false)
+                 .build();
+        refreshTokenRepository.save(refreshTokenObject);
+
         String accessToken = jwtService.generateAccessToken(user);
-        AuthResponseDto authResponse = AuthResponseDto.of(accessToken, "", jwtService.getAccessTokenExpirationTime(), modelMapper.map(user, UserDto.class));
+        String refreshToken = jwtService.generateRefreshToken(user,refreshTokenObject.getJti());
+        AuthResponseDto authResponse = AuthResponseDto.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationTime(), modelMapper.map(user, UserDto.class));
         return ResponseEntity.ok(authResponse);
     }
 
