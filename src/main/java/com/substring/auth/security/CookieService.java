@@ -23,4 +23,7 @@ public class CookieService {
         this.cookieDomin = cookieDomin;
         this.cookieSameSite = cookieSameSite;
     }
+
+    public CookieService() {
+    }
 }
