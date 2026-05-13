@@ -24,6 +24,5 @@ public class CookieService {
         this.cookieSameSite = cookieSameSite;
     }
 
-    public CookieService() {
-    }
+    
 }
