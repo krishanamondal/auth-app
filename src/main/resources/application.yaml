@@ -19,7 +19,7 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
 
 security:
-    jwt: ${JWT_SECRET:BF7FD11ACE545745B7BA1AF98B6F156D127BC7BB544BAB6A4FD74E4FC7B6F156}
+    jwt: $  {JWT_SECRET:BF7FD11ACE545745B7BA1AF98B6F156D127BC7BB544BAB6A4FD74E4FC7B6F156}
     issuer: ${JWT_ISSUER:api.substring.com}
     accessTokenExpirationTime: ${JWT_EXPIRATION:3600000} # 1 hour in milliseconds
     refreshTokenExpirationTime: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
@@ -27,3 +27,4 @@ security:
     cookie-secure: ${JWT_COOKIE_SECURE:true}
     cookie-http-only: ${JWT_COOKIE_HTTP_ONLY:true}
     cookie-same-site: ${JWT_COOKIE_SAME_SITE:lax}
+    cookie-domain: ${JWT_COOKIE_DOMAIN:substring.com}
