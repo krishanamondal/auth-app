@@ -2,6 +2,8 @@ package com.substring.auth.security;
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -26,6 +28,29 @@ public class CookieService {
     }
 
     public void addRefreshCookie(HttpServletResponse response,String value,int maxAge){
+        var responseCookieBuilder = ResponseCookie.from(refreshTokenCookieName, value)
+                .httpOnly(cookieHttpOnly)
+                .secure(cookieSecure)
+                .domain(cookieDomin)
+                .path("/")
+                .maxAge(maxAge)
+                .sameSite(cookieSameSite);
+        if (cookieDomin!=null && !cookieDomin.isBlank()){
+            responseCookieBuilder.domain(cookieDomin);
+        }
+        ResponseCookie responseCookie = responseCookieBuilder.build();
+        response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
 
+    }
+    public void clearRefreshCookie(HttpServletResponse response){
+        ResponseCookie responseCookie = ResponseCookie.from(refreshTokenCookieName, "")
+                .httpOnly(cookieHttpOnly)
+                .secure(cookieSecure)
+                .domain(cookieDomin)
+                .path("/")
+                .maxAge(0)
+                .sameSite(cookieSameSite)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
     }
 }
