@@ -1,5 +1,6 @@
 package com.substring.auth.security;
 
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -24,5 +25,7 @@ public class CookieService {
         this.cookieSameSite = cookieSameSite;
     }
 
-    
+    public void addRefreshCookie(HttpServletResponse response,String value,int maxAge){
+
+    }
 }
