@@ -53,4 +53,8 @@ public class CookieService {
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
     }
+    public void addNoStoreHeader(HttpServletResponse response){
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
+        response.setHeader(HttpHeaders.PRAGMA, "no-cache");
+    }
 }

@@ -10,6 +10,6 @@ public record AuthResponseDto (
         String tokenType,
         UserDto user){
     public static AuthResponseDto of(String accessToken, String refreshToken, long expiresIn, UserDto user) {
-        return new AuthResponseDto(accessToken, refreshToken, expiresIn, "Bearer", user);
+        return new AuthResponseDto(accessToken, refreshToken, expiresIn, "Bearer",user);
     }
 }

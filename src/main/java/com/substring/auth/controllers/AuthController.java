@@ -6,8 +6,10 @@ import com.substring.auth.entities.RefreshToken;
 import com.substring.auth.entities.User;
 import com.substring.auth.repository.RefreshTokenRepository;
 import com.substring.auth.repository.UserRepository;
+import com.substring.auth.security.CookieService;
 import com.substring.auth.security.JwtService;
 import com.substring.auth.services.AuthService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
@@ -35,10 +37,11 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final CookieService cookieService;
     private final ModelMapper modelMapper;
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponseDto> loginUser(@RequestBody LoginRequestDto loginDto) {
+    public ResponseEntity<AuthResponseDto> loginUser(@RequestBody LoginRequestDto loginDto, HttpServletResponse response) {
         Authentication authenticated = authenticate(loginDto);
         User user = userRepository.findByEmail(loginDto.email()).orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
         if (!user.isEnable()) {
@@ -56,6 +59,8 @@ public class AuthController {
 
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user,refreshTokenObject.getJti());
+        cookieService.addRefreshCookie(response,refreshToken,(int) jwtService.getRefreshTokenExpirationTime());
+        cookieService.addNoStoreHeader(response);
         AuthResponseDto authResponse = AuthResponseDto.of(accessToken, refreshToken, jwtService.getAccessTokenExpirationTime(), modelMapper.map(user, UserDto.class));
         return ResponseEntity.ok(authResponse);
     }
