@@ -4,6 +4,7 @@ import com.substring.auth.repository.UserRepository;
 import io.jsonwebtoken.*;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -38,95 +40,107 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        final String authHeader =
-                request.getHeader("Authorization");
+        String jwt = null;
 
-        logger.info("Authorization Header : {}", authHeader);
+        // ================================
+        // 1. CHECK AUTH HEADER FIRST
+        // ================================
+        String authHeader = request.getHeader("Authorization");
 
-        // Skip if no Bearer token
-        if (authHeader == null ||
-                !authHeader.startsWith("Bearer ")) {
+        logger.info("Authorization Header: {}", authHeader);
 
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7);
+        }
+
+        // ================================
+        // 2. CHECK COOKIE IF HEADER EMPTY
+        // ================================
+        if (jwt == null && request.getCookies() != null) {
+
+            for (Cookie cookie : request.getCookies()) {
+
+                logger.info("Cookie -> {} = {}", cookie.getName(), cookie.getValue());
+
+                // 🔥 ONLY ACCESS TOKEN IS ALLOWED HERE
+                if ("accessToken".equals(cookie.getName())) {
+                    jwt = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        logger.info("JWT extracted: {}", jwt);
+
+        // ================================
+        // 3. NO TOKEN → CONTINUE
+        // ================================
+        if (jwt == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String jwt = authHeader.substring(7);
-
         try {
 
-            // Check token type
+            // ================================
+            // 4. VALIDATE ACCESS TOKEN ONLY
+            // ================================
             if (!jwtService.isAccessToken(jwt)) {
+                logger.warn("Token is NOT access token");
                 filterChain.doFilter(request, response);
                 return;
             }
 
-            // Parse token
-            Jws<Claims> parse = jwtService.parse(jwt);
+            // ================================
+            // 5. PARSE TOKEN
+            // ================================
+            Jws<Claims> parsed = jwtService.parse(jwt);
+            Claims claims = parsed.getPayload();
 
-            Claims payload = parse.getPayload();
+            String userId = claims.getSubject();
+            UUID uuid = UUID.fromString(userId);
 
-            String userId = payload.getSubject();
-
-            UUID userUUID = UUID.fromString(userId);
-
-            userRepository.findById(userUUID)
+            // ================================
+            // 6. LOAD USER
+            // ================================
+            userRepository.findById(uuid)
                     .ifPresent(user -> {
 
-                        if (user.isEnable()) {
+                        if (!user.isEnable()) return;
 
-                            List<GrantedAuthority> authorities =
-                                    user.getRoles() == null
-                                            ? List.of()
-                                            : user.getRoles()
-                                            .stream()
-                                            .map(role ->
-                                                    new SimpleGrantedAuthority(
-                                                            role.getName()))
-                                            .collect(Collectors.toList());
+                        List<GrantedAuthority> authorities =
+                                user.getRoles() == null
+                                        ? List.of()
+                                        : user.getRoles()
+                                        .stream()
+                                        .map(role ->
+                                                new SimpleGrantedAuthority(role.getName()))
+                                        .collect(Collectors.toList());
 
-                            UsernamePasswordAuthenticationToken authentication =
-                                    new UsernamePasswordAuthenticationToken(
-                                            user.getEmail(),
-                                            null,
-                                            authorities
-                                    );
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(
+                                        user.getEmail(),
+                                        null,
+                                        authorities
+                                );
 
-                            authentication.setDetails(
-                                    new WebAuthenticationDetailsSource()
-                                            .buildDetails(request));
+                        authentication.setDetails(
+                                new WebAuthenticationDetailsSource()
+                                        .buildDetails(request)
+                        );
 
-                            if (SecurityContextHolder
-                                    .getContext()
-                                    .getAuthentication() == null) {
-
-                                SecurityContextHolder
-                                        .getContext()
-                                        .setAuthentication(authentication);
-                            }
-                        }
+                        SecurityContextHolder.getContext()
+                                .setAuthentication(authentication);
                     });
 
         } catch (ExpiredJwtException e) {
-
-            logger.error("JWT expired: {}", e.getMessage());
-            request.setAttribute("error","Token Expire");
-
-        } catch (MalformedJwtException e) {
-
-            logger.error("Invalid JWT: {}", e.getMessage());
-            request.setAttribute("error","Invalid Token");
+            logger.error("Token expired: {}", e.getMessage());
 
         } catch (JwtException e) {
-
-            logger.error("JWT error: {}", e.getMessage());
-            request.setAttribute("error","Invalid Token");
+            logger.error("Invalid JWT: {}", e.getMessage());
 
         } catch (Exception e) {
-
-            logger.error("Authentication failed: {}", e.getMessage());
-            request.setAttribute("error","Invalid Token");
-
+            logger.error("Auth error: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);

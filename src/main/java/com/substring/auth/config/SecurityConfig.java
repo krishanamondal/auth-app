@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -21,7 +21,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.time.Instant;
-import java.util.Map;
 
 @Configuration
 public class SecurityConfig {
@@ -43,8 +42,8 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration configuration) throws Exception {
-
         return configuration.getAuthenticationManager();
+        // add 
     }
 
     @Bean
@@ -52,59 +51,51 @@ public class SecurityConfig {
             throws Exception {
 
         http
+                // CORS (default config)
                 .cors(Customizer.withDefaults())
 
+                // Stateless API
                 .csrf(AbstractHttpConfigurer::disable)
 
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS))
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
 
-                .authorizeHttpRequests(auth ->
-                        auth
-                                .requestMatchers("/api/v1/auth/**")
-                                .permitAll()
-                                .anyRequest()
-                                .authenticated())
+                // Authorization rules
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .anyRequest().authenticated()
+                )
 
-                .exceptionHandling(exception ->
-                        exception.authenticationEntryPoint(
-                                (req, response, authException) -> {
+                // Custom exception handling
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((req, res, ex) -> {
 
-                                    logger.warn(
-                                            "Unauthorized access: {}",
-                                            authException.getMessage());
-                                    String message;
- Object error = req.getAttribute("error");
- if (error != null) {
-        message = error.toString();
-    } else {
-        message = "Unauthorized access";
- }
-                                    response.setStatus(
-                                            HttpServletResponse.SC_UNAUTHORIZED);
+                            logger.warn("Unauthorized access: {}", ex.getMessage());
 
-                                    response.setContentType("application/json");
+                            String message = (req.getAttribute("error") != null)
+                                    ? req.getAttribute("error").toString()
+                                    : "Unauthorized access";
 
-//                                    Map<String, String> errorMap = Map.of(
-//                                            "message",
-//                                            message,
-//                                            "status",
-//                                            "401",
-//                                            "error",
-//                                            "UNAUTHORIZED"
-//                                    );
-                                    Instant instant = Instant.now();
-                                    String time = instant.toString();
-var errorMap = ApiError.of(401, "Authorization Access ! ",message,req.getRequestURI(),time);
-                                    ObjectMapper objectMapper =
-                                            new ObjectMapper();
+                            ApiError error = ApiError.of(
+                                    401,
+                                    "Authorization failed",
+                                    message,
+                                    req.getRequestURI(),
+                                    Instant.now().toString()
+                            );
 
-                                    response.getWriter().write(
-                                            objectMapper.writeValueAsString(
-                                                    errorMap));
-                                }))
+                            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            res.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
+                            ObjectMapper mapper = new ObjectMapper();
+                            res.getWriter().write(
+                                    mapper.writeValueAsString(error)
+                            );
+                        })
+                )
+
+                // JWT Filter
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
