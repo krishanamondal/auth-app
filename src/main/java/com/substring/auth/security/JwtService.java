@@ -24,10 +24,10 @@ public class JwtService {
     private final String issuer;
 
     public JwtService(
-            @Value("${security.jwt}") String secret,
-            @Value("${security.accessTokenExpirationTime}") long accessTokenExpirationTime,
-            @Value("${security.refreshTokenExpirationTime}") long refreshTokenTtlSecond,
-            @Value("${security.issuer}") String issuer) {
+            @Value("${security.jwt.secret}") String secret,
+            @Value("${security.jwt.accessTokenExpirationTime}") long accessTokenExpirationTime,
+            @Value("${security.jwt.refreshTokenExpirationTime}") long refreshTokenTtlSecond,
+            @Value("${security.jwt.issuer}") String issuer) {
 
         if (secret == null || secret.length() < 64) {
             throw new IllegalArgumentException("Secret key must be at least 32 characters long");
