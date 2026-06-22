@@ -8,31 +8,34 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import java.time.Instant;
-import java.util.Map;
 
+@EnableWebSecurity
 @Configuration
 public class SecurityConfig {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(SecurityConfig.class);
+    private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final AuthenticationSuccessHandler successHandler;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    // Spring will automatically inject your custom OAuthSuccessHandler bean here
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, AuthenticationSuccessHandler successHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.successHandler = successHandler;
     }
 
     @Bean
@@ -41,74 +44,47 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration configuration) throws Exception {
-
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
-            throws Exception {
-
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
-
                 .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                // FIX: Replaced null with your actual class-level successHandler bean
+                .oauth2Login(oauth2 -> oauth2
+                        .successHandler(successHandler)
+                )
+                .logout(AbstractHttpConfigurer::disable)
+                .exceptionHandling(exception -> exception.authenticationEntryPoint((req, response, authException) -> {
+                    logger.warn("Unauthorized access: {}", authException.getMessage());
 
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS))
+                    String message;
+                    Object error = req.getAttribute("error");
+                    if (error != null) {
+                        message = error.toString();
+                    } else {
+                        message = "Unauthorized access";
+                    }
 
-                .authorizeHttpRequests(auth ->
-                        auth
-                                .requestMatchers("/api/v1/auth/**")
-                                .permitAll()
-                                .anyRequest()
-                                .authenticated())
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
 
-                .exceptionHandling(exception ->
-                        exception.authenticationEntryPoint(
-                                (req, response, authException) -> {
+                    Instant instant = Instant.now();
+                    String time = instant.toString();
+                    var errorMap = ApiError.of(401, "Authorization Access ! ", message, req.getRequestURI(), time);
 
-                                    logger.warn(
-                                            "Unauthorized access: {}",
-                                            authException.getMessage());
-                                    String message;
- Object error = req.getAttribute("error");
- if (error != null) {
-        message = error.toString();
-    } else {
-        message = "Unauthorized access";
- }
-                                    response.setStatus(
-                                            HttpServletResponse.SC_UNAUTHORIZED);
-
-                                    response.setContentType("application/json");
-
-//                                    Map<String, String> errorMap = Map.of(
-//                                            "message",
-//                                            message,
-//                                            "status",
-//                                            "401",
-//                                            "error",
-//                                            "UNAUTHORIZED"
-//                                    );
-                                    Instant instant = Instant.now();
-                                    String time = instant.toString();
-var errorMap = ApiError.of(401, "Authorization Access ! ",message,req.getRequestURI(),time);
-                                    ObjectMapper objectMapper =
-                                            new ObjectMapper();
-
-                                    response.getWriter().write(
-                                            objectMapper.writeValueAsString(
-                                                    errorMap));
-                                }))
-
-                .addFilterBefore(
-                        jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                );
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    response.getWriter().write(objectMapper.writeValueAsString(errorMap));
+                }))
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
