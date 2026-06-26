@@ -27,6 +27,14 @@ spring:
               - profile
               - email
               - openid
+              -
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+#           http://localhost:8080//oauth2/authorization/github
+            scope:
+              - read:user
+              - user:email
 security:
   jwt:
     secret: ${JWT_SECRET:BF7FD11ACE545745B7BA1AF98B6F156D127BC7BB544BAB6A4FD74E4FC7B6F156}
